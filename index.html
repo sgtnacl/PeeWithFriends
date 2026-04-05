@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Piss With Friends</title>
+  <style>
+    :root {
+      --yellow:     #f5c800;
+      --yellow-dark:#c9a200;
+      --yellow-pale:#fff9d6;
+      --blue:       #1a6fb5;
+      --blue-dark:  #104e85;
+      --bg:         #0d1b2a;
+      --panel:      #132336;
+      --panel2:     #1b3050;
+      --text:       #f0f4f8;
+      --muted:      #7a99bb;
+      --border:     #1e3a55;
+      --gold:       #ffd700;
+      --silver:     #c0c0c0;
+      --bronze:     #cd7f32;
+      --red:        #e05555;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      width: 100%;
+      background: linear-gradient(135deg, #0a1520 0%, #132336 100%);
+      border-bottom: 2px solid var(--yellow);
+      padding: 18px 24px 14px;
+      text-align: center;
+    }
+    header h1 {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: var(--yellow);
+      text-shadow: 0 0 18px rgba(245,200,0,.45);
+    }
+    header h1 span { color: #fff; }
+    #date-display {
+      font-size: .85rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── Main layout ─────────────────────────────────────────── */
+    main {
+      width: 100%;
+      max-width: 560px;
+      padding: 24px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Cards ───────────────────────────────────────────────── */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px;
+    }
+    .card-title {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Setup screen ────────────────────────────────────────── */
+    #setup-screen { text-align: center; }
+    #setup-screen p {
+      color: var(--muted);
+      font-size: .9rem;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+    #setup-screen input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: 12px;
+    }
+    #setup-screen input:focus { border-color: var(--yellow); }
+    #setup-screen input::placeholder { color: var(--muted); }
+
+    /* ── Buttons ─────────────────────────────────────────────── */
+    .btn {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .1s, box-shadow .1s, background .15s;
+    }
+    .btn:active { transform: scale(.96); }
+    .btn-primary {
+      background: var(--yellow);
+      color: #0d1b2a;
+      box-shadow: 0 4px 18px rgba(245,200,0,.35);
+      width: 100%;
+    }
+    .btn-primary:hover { background: var(--yellow-dark); }
+    .btn-primary:disabled {
+      background: #3a4a5a;
+      color: var(--muted);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-size: .8rem;
+      padding: 6px 14px;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ── Pee button ──────────────────────────────────────────── */
+    #pee-card { text-align: center; }
+    #pee-btn {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      border: none;
+      background: radial-gradient(circle at 35% 35%, #ffe566, var(--yellow), var(--yellow-dark));
+      color: #0d1b2a;
+      font-size: 2.8rem;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 0 0 6px rgba(245,200,0,.15), 0 8px 32px rgba(245,200,0,.4);
+      transition: transform .12s, box-shadow .12s;
+      position: relative;
+      margin: 6px auto 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    #pee-btn .btn-label {
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+    #pee-btn:hover:not(:disabled) {
+      transform: scale(1.06);
+      box-shadow: 0 0 0 10px rgba(245,200,0,.2), 0 12px 40px rgba(245,200,0,.5);
+    }
+    #pee-btn:active:not(:disabled) { transform: scale(.97); }
+    #pee-btn:disabled {
+      background: #2a3a4a;
+      color: #4a6a8a;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    #my-count {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--yellow);
+    }
+    #my-count-label { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Cooldown ────────────────────────────────────────────── */
+    #cooldown-box {
+      background: rgba(26,111,181,.15);
+      border: 1px solid rgba(26,111,181,.35);
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: .85rem;
+      color: var(--muted);
+      display: none;
+      text-align: center;
+    }
+    #cooldown-box.active { display: block; }
+    #cooldown-timer { font-weight: 700; color: var(--blue); font-size: 1rem; }
+
+    /* ── Flash message ───────────────────────────────────────── */
+    #flash {
+      background: rgba(245,200,0,.12);
+      border: 1px solid var(--yellow);
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: .9rem;
+      color: var(--yellow);
+      text-align: center;
+      display: none;
+      animation: fadeIn .3s ease;
+    }
+    #flash.visible { display: block; }
+    #flash.error { background: rgba(224,85,85,.12); border-color: var(--red); color: var(--red); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Leaderboard ─────────────────────────────────────────── */
+    #leaderboard-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    #leaderboard-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      transition: background .15s;
+    }
+    #leaderboard-list li.is-me {
+      border-color: rgba(245,200,0,.4);
+      background: rgba(245,200,0,.06);
+    }
+
+    .rank {
+      font-size: .95rem;
+      font-weight: 900;
+      width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .rank-1 { color: var(--gold); }
+    .rank-2 { color: var(--silver); }
+    .rank-3 { color: var(--bronze); }
+    .rank-n { color: var(--muted); font-size: .85rem; }
+
+    .lb-name {
+      flex: 1;
+      font-weight: 600;
+      font-size: .95rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lb-you {
+      font-size: .7rem;
+      background: var(--yellow);
+      color: #0d1b2a;
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .lb-count {
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: var(--yellow);
+      flex-shrink: 0;
+    }
+    .lb-empty {
+      color: var(--muted);
+      font-size: .9rem;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* ── Footer strip ────────────────────────────────────────── */
+    #user-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    #user-strip .uname {
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    #user-strip .uname strong { color: var(--text); }
+
+    /* ── Loading ─────────────────────────────────────────────── */
+    #loading {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--yellow);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { color: var(--muted); font-size: .9rem; }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 400px) {
+      #pee-btn { width: 130px; height: 130px; font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Connecting...</p>
+</div>
+
+<!-- Header -->
+<header>
+  <h1>&#128688; Piss <span>With</span> Friends</h1>
+  <div id="date-display"></div>
+</header>
+
+<main id="app" style="display:none;">
+
+  <!-- Setup / name entry -->
+  <div class="card" id="setup-screen" style="display:none;">
+    <div class="card-title">Welcome</div>
+    <p>Choose a display name to join the leaderboard.<br>Your identity is tied to this device.</p>
+    <input type="text" id="name-input" maxlength="20" placeholder="Your name (e.g. SpeedPeecer)" autocomplete="off" />
+    <button class="btn btn-primary" id="save-name-btn">Join the Game</button>
+  </div>
+
+  <!-- Main pee card -->
+  <div class="card" id="pee-card" style="display:none;">
+    <div id="user-strip">
+      <span class="uname">Playing as <strong id="display-name-label"></strong></span>
+      <button class="btn btn-secondary" id="change-name-btn">Rename</button>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+
+    <div style="text-align:center;">
+      <button id="pee-btn">
+        <span>&#128688;</span>
+        <span class="btn-label">I Peed!</span>
+      </button>
+
+      <div id="my-count">0</div>
+      <div id="my-count-label">pees today</div>
+    </div>
+
+    <div style="height:14px;"></div>
+    <div id="cooldown-box">
+      Next pee available in <span id="cooldown-timer">30:00</span>
+    </div>
+    <div style="height:6px;"></div>
+    <div id="flash"></div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="card" id="lb-card" style="display:none;">
+    <div class="card-title">Today's Leaderboard</div>
+    <ul id="leaderboard-list">
+      <li class="lb-empty">No pees logged yet today.</li>
+    </ul>
+  </div>
+
+</main>
+
+<!-- Firebase SDKs (compat) -->
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ── Constants ────────────────────────────────────────────────
+const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+// ── Firebase init ─────────────────────────────────────────────
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+// ── State ─────────────────────────────────────────────────────
+let currentUid  = null;
+let displayName = localStorage.getItem('pwf_name') || null;
+let cooldownInterval = null;
+
+// ── Helpers ───────────────────────────────────────────────────
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+
+function showFlash(msg, isError = false) {
+  const el = document.getElementById('flash');
+  el.textContent = msg;
+  el.className = 'visible' + (isError ? ' error' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 3500);
+}
+
+// ── Cooldown management ───────────────────────────────────────
+function getRemainingCooldown() {
+  const last = parseInt(localStorage.getItem('pwf_lastPee') || '0', 10);
+  if (!last) return 0;
+  const elapsed = Date.now() - last;
+  return Math.max(0, COOLDOWN_MS - elapsed);
+}
+
+function startCooldownUI(remainingMs) {
+  const box   = document.getElementById('cooldown-box');
+  const timer = document.getElementById('cooldown-timer');
+  const btn   = document.getElementById('pee-btn');
+
+  clearInterval(cooldownInterval);
+
+  if (remainingMs <= 0) {
+    box.classList.remove('active');
+    btn.disabled = false;
+    return;
+  }
+
+  btn.disabled = true;
+  box.classList.add('active');
+
+  function tick() {
+    const rem = getRemainingCooldown();
+    if (rem <= 0) {
+      clearInterval(cooldownInterval);
+      box.classList.remove('active');
+      btn.disabled = false;
+      timer.textContent = '0:00';
+      return;
+    }
+    const m = Math.floor(rem / 60000);
+    const s = Math.floor((rem % 60000) / 1000);
+    timer.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  }
+  tick();
+  cooldownInterval = setInterval(tick, 1000);
+}
+
+// ── Leaderboard rendering ─────────────────────────────────────
+function renderLeaderboard(snapshot) {
+  const list = document.getElementById('leaderboard-list');
+  const data = snapshot.val();
+
+  if (!data) {
+    list.innerHTML = '<li class="lb-empty">No pees logged yet today. Be first!</li>';
+    return;
+  }
+
+  const entries = Object.entries(data)
+    .map(([uid, v]) => ({ uid, name: v.name || 'Unknown', count: v.count || 0 }))
+    .sort((a, b) => b.count - a.count);
+
+  const medals = ['&#127947;', '&#129352;', '&#129353;'];
+  const rankClass = ['rank-1','rank-2','rank-3'];
+
+  list.innerHTML = entries.map((e, i) => {
+    const isMe = e.uid === currentUid;
+    const rankIcon = i < 3 ? medals[i] : `${i+1}`;
+    const rankCls  = i < 3 ? rankClass[i] : 'rank-n';
+    return `
+      <li class="${isMe ? 'is-me' : ''}">
+        <span class="rank ${rankCls}">${rankIcon}</span>
+        <span class="lb-name">${escapeHtml(e.name)}</span>
+        ${isMe ? '<span class="lb-you">YOU</span>' : ''}
+        <span class="lb-count">${e.count} &#128688;</span>
+      </li>`;
+  }).join('');
+
+  // Update my count display
+  const me = entries.find(e => e.uid === currentUid);
+  document.getElementById('my-count').textContent = me ? me.count : 0;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Subscribe to today's leaderboard ─────────────────────────
+function subscribeLeaderboard() {
+  const ref = db.ref(`leaderboard/${todayKey()}`);
+  ref.on('value', renderLeaderboard);
+}
+
+// ── Log a pee ─────────────────────────────────────────────────
+async function logPee() {
+  if (!currentUid) return;
+
+  // Client-side cooldown gate
+  const rem = getRemainingCooldown();
+  if (rem > 0) {
+    const m = Math.floor(rem / 60000);
+    const s = Math.floor((rem % 60000) / 1000);
+    showFlash(`Hold it! Cooldown: ${m}:${String(s).padStart(2,'0')} remaining.`, true);
+    return;
+  }
+
+  const btn = document.getElementById('pee-btn');
+  btn.disabled = true;
+
+  try {
+    const today   = todayKey();
+    const userRef = db.ref(`leaderboard/${today}/${currentUid}`);
+
+    // Read current server value to prevent race conditions
+    const snap = await userRef.get();
+    const serverData = snap.val();
+    const now = Date.now();
+
+    // Server-side cooldown check
+    if (serverData && serverData.lastPee) {
+      const elapsed = now - serverData.lastPee;
+      if (elapsed < COOLDOWN_MS) {
+        const remMs = COOLDOWN_MS - elapsed;
+        localStorage.setItem('pwf_lastPee', String(now - elapsed));
+        startCooldownUI(remMs);
+        showFlash('Cooldown detected on server. Syncing...', true);
+        return;
+      }
+    }
+
+    const newCount = (serverData?.count || 0) + 1;
+    await userRef.set({
+      name:    displayName,
+      count:   newCount,
+      lastPee: now
+    });
+
+    // Save cooldown timestamp locally
+    localStorage.setItem('pwf_lastPee', String(now));
+    startCooldownUI(COOLDOWN_MS);
+    showFlash('Logged! Stay hydrated. 💧');
+
+  } catch (err) {
+    console.error(err);
+    showFlash('Error saving — check your connection.', true);
+    btn.disabled = false;
+  }
+}
+
+// ── Name management ───────────────────────────────────────────
+function showSetup() {
+  document.getElementById('setup-screen').style.display = '';
+  document.getElementById('pee-card').style.display     = 'none';
+  document.getElementById('lb-card').style.display      = 'none';
+  document.getElementById('name-input').value = displayName || '';
+  document.getElementById('name-input').focus();
+}
+
+async function saveName() {
+  const raw = document.getElementById('name-input').value.trim();
+  if (!raw) { showFlash('Please enter a name.', true); return; }
+
+  displayName = raw.slice(0, 20);
+  localStorage.setItem('pwf_name', displayName);
+
+  // Persist name to user's leaderboard entry if they have one
+  if (currentUid) {
+    const today = todayKey();
+    const snap = await db.ref(`leaderboard/${today}/${currentUid}`).get();
+    if (snap.exists()) {
+      await db.ref(`leaderboard/${today}/${currentUid}/name`).set(displayName);
+    }
+  }
+
+  showApp();
+}
+
+function showApp() {
+  document.getElementById('setup-screen').style.display  = 'none';
+  document.getElementById('pee-card').style.display      = '';
+  document.getElementById('lb-card').style.display       = '';
+  document.getElementById('display-name-label').textContent = displayName;
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+document.getElementById('date-display').textContent = formatDate(new Date());
+
+document.getElementById('pee-btn').addEventListener('click', logPee);
+
+document.getElementById('save-name-btn').addEventListener('click', saveName);
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveName();
+});
+
+document.getElementById('change-name-btn').addEventListener('click', showSetup);
+
+auth.signInAnonymously()
+  .then(cred => {
+    currentUid = cred.user.uid;
+
+    // Hide loading
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display     = 'flex';
+
+    subscribeLeaderboard();
+    startCooldownUI(getRemainingCooldown());
+
+    if (!displayName) {
+      showSetup();
+    } else {
+      showApp();
+    }
+  })
+  .catch(err => {
+    document.getElementById('loading').innerHTML =
+      `<p style="color:var(--red);max-width:300px;text-align:center;">
+        Firebase connection failed.<br><small>${err.message}</small><br><br>
+        <small>Check firebase-config.js and make sure Anonymous Auth is enabled in your Firebase project.</small>
+      </p>`;
+    console.error(err);
+  });
+</script>
+</body>
+</html>
