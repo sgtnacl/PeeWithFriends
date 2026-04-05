@@ -32,8 +32,8 @@ This app requires a free Firebase project for shared real-time data.
   "rules": {
     "leaderboard": {
       "$date": {
+        ".read": true,
         "$uid": {
-          ".read": true,
           ".write": "auth != null && auth.uid === $uid"
         }
       }
