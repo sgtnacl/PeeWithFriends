@@ -311,9 +311,56 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     #loading p { color: var(--muted); font-size: .9rem; }
 
+    /* ── Color picker ────────────────────────────────────────── */
+    #color-picker { margin: 18px 0 6px; text-align: center; }
+    .color-picker-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .color-swatches {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .color-swatch-wrap { text-align: center; }
+    .color-swatch {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      border: 3px solid transparent;
+      cursor: pointer;
+      display: block;
+      transition: transform .12s, border-color .12s, box-shadow .12s;
+    }
+    .color-swatch:hover { transform: scale(1.12); }
+    .color-swatch.selected {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px var(--yellow), 0 4px 14px rgba(0,0,0,.5);
+      transform: scale(1.1);
+    }
+    .swatch-label {
+      font-size: .62rem;
+      color: var(--muted);
+      margin-top: 5px;
+      line-height: 1.2;
+    }
+    #hydration-hint {
+      font-size: .82rem;
+      margin-top: 12px;
+      min-height: 1.3em;
+      font-weight: 600;
+      transition: color .2s;
+    }
+
     /* ── Responsive ──────────────────────────────────────────── */
     @media (max-width: 400px) {
       #pee-btn { width: 130px; height: 130px; font-size: 2.2rem; }
+      .color-swatch { width: 38px; height: 38px; }
     }
   </style>
 </head>
@@ -360,7 +407,13 @@
       <div id="my-count-label">pees today</div>
     </div>
 
-    <div style="height:14px;"></div>
+    <div id="color-picker">
+      <div class="color-picker-label">Urine color?</div>
+      <div class="color-swatches" id="color-swatches"></div>
+      <div id="hydration-hint"></div>
+    </div>
+
+    <div style="height:10px;"></div>
     <div id="cooldown-box">
       Next pee available in <span id="cooldown-timer">30:00</span>
     </div>
@@ -387,6 +440,15 @@
 // ── Constants ────────────────────────────────────────────────
 const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
+const PEE_COLORS = [
+  { id: 'clear',       hex: '#d4f5c0', label: 'Clear',       hint: 'Over-hydrated — ease up on water!',        hintColor: '#7bcf7b' },
+  { id: 'pale',        hex: '#f5f0a0', label: 'Pale Straw',  hint: 'Very well hydrated. Keep it up!',          hintColor: '#b8d46a' },
+  { id: 'yellow',      hex: '#f5c800', label: 'Yellow',      hint: 'Normal. Good hydration.',                  hintColor: '#f5c800' },
+  { id: 'dark-yellow', hex: '#d4940a', label: 'Dark Yellow', hint: 'Slightly dehydrated. Grab some water.',    hintColor: '#d4940a' },
+  { id: 'amber',       hex: '#b8650b', label: 'Amber',       hint: 'Dehydrated! Drink water soon.',            hintColor: '#e07030' },
+  { id: 'brown',       hex: '#7a3b10', label: 'Brown',       hint: 'Very dehydrated. Drink water now!',        hintColor: '#e05555' },
+];
+
 // ── Firebase init ─────────────────────────────────────────────
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -396,6 +458,7 @@ const db   = firebase.database();
 let currentUid  = null;
 let displayName = localStorage.getItem('pwf_name') || null;
 let cooldownInterval = null;
+let selectedColor = null;
 
 // ── Helpers ───────────────────────────────────────────────────
 function todayKey() {
@@ -456,6 +519,49 @@ function startCooldownUI(remainingMs) {
   cooldownInterval = setInterval(tick, 1000);
 }
 
+// ── Color picker ──────────────────────────────────────────────
+function initColorPicker() {
+  const container = document.getElementById('color-swatches');
+  PEE_COLORS.forEach(c => {
+    const wrap = document.createElement('div');
+    wrap.className = 'color-swatch-wrap';
+
+    const btn = document.createElement('button');
+    btn.className = 'color-swatch';
+    btn.style.background = c.hex;
+    btn.title = c.label;
+    btn.dataset.colorId = c.id;
+    btn.setAttribute('aria-label', c.label);
+    btn.addEventListener('click', () => pickColor(c));
+
+    const lbl = document.createElement('div');
+    lbl.className = 'swatch-label';
+    lbl.textContent = c.label;
+
+    wrap.appendChild(btn);
+    wrap.appendChild(lbl);
+    container.appendChild(wrap);
+  });
+}
+
+function pickColor(c) {
+  selectedColor = c;
+  document.querySelectorAll('.color-swatch').forEach(s =>
+    s.classList.toggle('selected', s.dataset.colorId === c.id)
+  );
+  const hint = document.getElementById('hydration-hint');
+  hint.textContent = c.hint;
+  hint.style.color = c.hintColor;
+}
+
+function resetColorPicker() {
+  selectedColor = null;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  const hint = document.getElementById('hydration-hint');
+  hint.textContent = '';
+  hint.style.color = '';
+}
+
 // ── Leaderboard rendering ─────────────────────────────────────
 function renderLeaderboard(snapshot) {
   const list = document.getElementById('leaderboard-list');
@@ -505,6 +611,12 @@ function subscribeLeaderboard() {
 async function logPee() {
   if (!currentUid) return;
 
+  // Color required
+  if (!selectedColor) {
+    showFlash('Pick a color first!', true);
+    return;
+  }
+
   // Client-side cooldown gate
   const rem = getRemainingCooldown();
   if (rem > 0) {
@@ -542,13 +654,15 @@ async function logPee() {
     await userRef.set({
       name:    displayName,
       count:   newCount,
-      lastPee: now
+      lastPee: now,
+      lastColor: selectedColor.id
     });
 
     // Save cooldown timestamp locally
     localStorage.setItem('pwf_lastPee', String(now));
     startCooldownUI(COOLDOWN_MS);
-    showFlash('Logged! Stay hydrated. 💧');
+    showFlash(`Logged! ${selectedColor.hint}`);
+    resetColorPicker();
 
   } catch (err) {
     console.error(err);
@@ -594,6 +708,7 @@ function showApp() {
 
 // ── Boot ──────────────────────────────────────────────────────
 document.getElementById('date-display').textContent = formatDate(new Date());
+initColorPicker();
 
 document.getElementById('pee-btn').addEventListener('click', logPee);
 
