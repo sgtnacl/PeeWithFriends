@@ -1062,8 +1062,9 @@ async function logPee() {
     localStorage.setItem('pwf_lastPee', String(now));
     startCooldownUI(COOLDOWN_MS);
     showFlash(`Logged! ${selectedColor.hint}`);
+    const loggedColorId = selectedColor.id;
     resetColorPicker();
-    updateUserStats(selectedColor.id);
+    updateUserStats(loggedColorId);
 
   } catch (err) {
     console.error(err);
