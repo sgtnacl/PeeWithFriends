@@ -401,6 +401,87 @@
     }
     .patch-feature p + p { margin-top: 5px; }
 
+    /* ── Achievement popup ───────────────────────────────────── */
+    #achievement-popup {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 24px;
+    }
+    #achievement-popup.visible { display: flex; }
+    #ach-inner {
+      background: var(--panel);
+      border: 2px solid var(--yellow);
+      border-radius: 20px;
+      padding: 32px 24px 24px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(245,200,0,.25);
+      animation: achPop .3s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes achPop { from { opacity:0; transform:scale(.8); } to { opacity:1; transform:scale(1); } }
+    #ach-unlocked {
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--yellow);
+      margin-bottom: 14px;
+    }
+    #ach-icon-display { font-size: 3.5rem; line-height: 1; margin-bottom: 10px; }
+    #ach-name-display {
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    #ach-desc-display {
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+
+    /* ── Trophy case ──────────────────────────────────────────── */
+    .trophy-divider { height: 1px; background: var(--border); margin: 18px 0 14px; }
+    .trophy-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .trophy-title {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .trophy-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .trophy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--text);
+      cursor: default;
+    }
+    .trophy-badge.gold { border-color: var(--gold); background: rgba(255,215,0,.08); }
+    .trophy-empty { font-size: .85rem; color: var(--muted); padding: 6px 0; }
+
     /* ── Clickable leaderboard rows ──────────────────────────── */
     #leaderboard-list li.clickable {
       cursor: pointer;
@@ -759,6 +840,7 @@
   <div class="card" id="diary-card" style="display:none;">
     <div class="card-title">My Diary</div>
     <div id="diary-rows"></div>
+    <div id="trophy-section"></div>
   </div>
 
   <!-- User bio -->
@@ -772,6 +854,17 @@
   </div>
 
 </main>
+
+<!-- Achievement popup -->
+<div id="achievement-popup">
+  <div id="ach-inner">
+    <div id="ach-unlocked">&#127942; Achievement Unlocked!</div>
+    <div id="ach-icon-display"></div>
+    <div id="ach-name-display"></div>
+    <div id="ach-desc-display"></div>
+    <button class="btn btn-primary" id="ach-close">Awesome!</button>
+  </div>
+</div>
 
 <!-- Patch notes / features added -->
 <div id="patch-notes">
@@ -1027,13 +1120,107 @@ function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Achievements ──────────────────────────────────────────────
+const ACHIEVEMENTS = (() => {
+  const list = [];
+  for (let lvl = 1; lvl <= 99; lvl++) {
+    list.push({ id: `streaker-${lvl}`, name: `Streaker Lv. ${lvl}`, icon: '🔥',
+      desc: `Log at least one pee for ${lvl * 5} days in a row.`, type: 'streak', threshold: lvl * 5 });
+  }
+  list.push({ id: 'go-piss-girl',      name: 'Go Piss Girl',          icon: '👑', desc: 'Win the weekly leaderboard once.',         type: 'wins', threshold: 1 });
+  list.push({ id: 'hydration-queen',   name: 'Hydration Queen',        icon: '💎', desc: 'Win the weekly leaderboard 3 times.',      type: 'wins', threshold: 3 });
+  list.push({ id: 'uber-pisser',       name: 'Uber Pisser',            icon: '⚡', desc: 'Win the weekly leaderboard 5 times.',      type: 'wins', threshold: 5 });
+  list.push({ id: 'golden-shower',     name: 'Golden Shower',          icon: '🌟', desc: 'Win the weekly leaderboard 15 times.',     type: 'wins', threshold: 15 });
+  list.push({ id: 'drink-some-water',  name: 'Drink Some Water',       icon: '💧', desc: 'Log only 1 pee in a single day.',          type: 'daily', checkDaily: n => n === 1 });
+  list.push({ id: 'see-a-doctor',      name: 'See a Doctor',           icon: '🏥', desc: 'Log more than 15 pees in a single day.',   type: 'daily', checkDaily: n => n > 15 });
+  list.push({ id: 'properly-hydrated', name: 'Properly Hydrated',      icon: '✅', desc: 'Log exactly 6 pees in a single day.',      type: 'daily', checkDaily: n => n === 6 });
+  list.push({ id: 'dedicated',         name: 'Dedicated to the Craft', icon: '🎯', desc: 'Log 25 lifetime pees.',                    type: 'lifetime', threshold: 25 });
+  list.push({ id: 'love-of-game',      name: 'Love of the Game',       icon: '❤️', desc: 'Log 100 lifetime pees.',                   type: 'lifetime', threshold: 100 });
+  list.push({ id: 'still-here',        name: "You're Still Here?",     icon: '😳', desc: 'Log 500 lifetime pees.',                   type: 'lifetime', threshold: 500 });
+  list.push({ id: 'gallons',           name: 'Gallons and Gallons',    icon: '🌊', desc: 'Log 1500 lifetime pees.',                  type: 'lifetime', threshold: 1500 });
+  list.push({ id: 'bro-seriously',     name: 'Bro Seriously?',         icon: '😱', desc: 'Log 5000 lifetime pees.',                  type: 'lifetime', threshold: 5000 });
+  list.push({ id: 'completionist',     name: 'Completionist',          icon: '🏆', desc: 'Earn every other achievement.',            type: 'special' });
+  return list;
+})();
+
+const ACH_MAP = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]));
+
+let pendingPopupQueue = [];
+
+function checkAndAwardAchievements(stats, yesterdayCount = null) {
+  const earned = stats.achievements || {};
+  const newIds = [];
+
+  for (const ach of ACHIEVEMENTS) {
+    if (ach.id === 'completionist') continue;
+    if (earned[ach.id]) continue;
+
+    let qualifies = false;
+    if (ach.type === 'streak')    qualifies = (stats.streakLongest || 0) >= ach.threshold;
+    if (ach.type === 'wins')      qualifies = (stats.leaderboardWins || 0) >= ach.threshold;
+    if (ach.type === 'lifetime')  qualifies = (stats.lifetime || 0) >= ach.threshold;
+    if (ach.type === 'daily' && yesterdayCount !== null) qualifies = ach.checkDaily(yesterdayCount);
+    if (qualifies) newIds.push(ach.id);
+  }
+
+  // Completionist: all non-completionist achievements earned
+  if (!earned['completionist']) {
+    const nonComp = ACHIEVEMENTS.filter(a => a.id !== 'completionist').map(a => a.id);
+    const allSoFar = new Set([...Object.keys(earned), ...newIds]);
+    if (nonComp.every(id => allSoFar.has(id))) newIds.push('completionist');
+  }
+
+  return newIds;
+}
+
+async function awardAchievements(newIds) {
+  if (!newIds.length) return;
+  const now = Date.now();
+  const updates = {};
+  const pending = Object.assign({}, userStats.pendingAchievements || {});
+  newIds.forEach(id => {
+    updates[`achievements/${id}`] = now;
+    pending[id] = true;
+    userStats.achievements = userStats.achievements || {};
+    userStats.achievements[id] = now;
+  });
+  updates.pendingAchievements = pending;
+  userStats.pendingAchievements = pending;
+  await db.ref(`users/${currentUid}`).update(updates);
+}
+
+function showNextAchievementPopup() {
+  if (!pendingPopupQueue.length) return;
+  const id = pendingPopupQueue.shift();
+  const ach = ACH_MAP[id];
+  if (!ach) { showNextAchievementPopup(); return; }
+
+  document.getElementById('ach-icon-display').textContent = ach.icon;
+  document.getElementById('ach-name-display').textContent = ach.name;
+  document.getElementById('ach-desc-display').textContent = ach.desc;
+  document.getElementById('achievement-popup').classList.add('visible');
+
+  // Remove from Firebase pending
+  const pending = Object.assign({}, userStats.pendingAchievements || {});
+  delete pending[id];
+  userStats.pendingAchievements = pending;
+  db.ref(`users/${currentUid}/pendingAchievements`)
+    .set(Object.keys(pending).length ? pending : null);
+}
+
+function queuePendingAchievements() {
+  const pending = userStats.pendingAchievements || {};
+  pendingPopupQueue = Object.keys(pending);
+  if (pendingPopupQueue.length) showNextAchievementPopup();
+}
+
 // ── User stats ────────────────────────────────────────────────
 async function updateUserStats(colorId) {
-  const today = todayKey();
+  const today     = todayKey();
   const yesterday = getYesterdayKey();
-  const ref = db.ref(`users/${currentUid}`);
-  const snap = await ref.get();
-  const data = snap.val() || {};
+  const ref       = db.ref(`users/${currentUid}`);
+  const snap      = await ref.get();
+  const data      = snap.val() || {};
 
   const updates = {};
   updates.lifetime = (data.lifetime || 0) + 1;
@@ -1044,16 +1231,26 @@ async function updateUserStats(colorId) {
   updates.colorHistory = colorHistory;
 
   const lastPeeDate = data.lastPeeDate || null;
+  let yesterdayCount = null;
+
   if (lastPeeDate !== today) {
+    // New day — capture yesterday's count for daily achievement checks
+    if (lastPeeDate === yesterday) yesterdayCount = data.todayCount || 0;
     updates.activeDays  = (data.activeDays || 0) + 1;
     updates.lastPeeDate = today;
+    updates.todayCount  = 1;
     const cur = lastPeeDate === yesterday ? (data.streakCurrent || 0) + 1 : 1;
     updates.streakCurrent = cur;
     updates.streakLongest = Math.max(data.streakLongest || 0, cur);
+  } else {
+    updates.todayCount = (data.todayCount || 0) + 1;
   }
 
   await ref.update(updates);
   userStats = Object.assign({}, data, updates);
+
+  const newIds = checkAndAwardAchievements(userStats, yesterdayCount);
+  if (newIds.length) await awardAchievements(newIds);
 }
 
 function checkStreakOnLogin(data) {
@@ -1087,6 +1284,9 @@ async function checkLastWeekLeaderboard(data) {
 
   await db.ref(`users/${currentUid}`).update(updates);
   Object.assign(userStats, updates);
+
+  const newIds = checkAndAwardAchievements(userStats);
+  if (newIds.length) await awardAchievements(newIds);
 }
 
 // ── Diary ──────────────────────────────────────────────────────
@@ -1184,6 +1384,47 @@ function renderDiary() {
   });
 }
 
+function renderTrophyCase() {
+  const earned  = userStats.achievements || {};
+  const privacy = userStats.privacy || {};
+  const isPublic = !!privacy.trophyCase;
+  const section = document.getElementById('trophy-section');
+
+  const earnedList = ACHIEVEMENTS.filter(a => earned[a.id]);
+
+  let html = `<div class="trophy-divider"></div>
+    <div class="trophy-header">
+      <span class="trophy-title">&#127942; Trophy Case (${earnedList.length}/${ACHIEVEMENTS.length})</span>
+    </div>`;
+
+  if (!earnedList.length) {
+    html += `<div class="trophy-empty">No achievements yet. Keep pissing!</div>`;
+  } else {
+    html += `<div class="trophy-grid">`;
+    earnedList.forEach(a => {
+      const isGold = a.id === 'completionist';
+      html += `<span class="trophy-badge${isGold ? ' gold' : ''}" title="${escapeHtml(a.desc)}">${a.icon} ${escapeHtml(a.name)}</span>`;
+    });
+    html += `</div>`;
+  }
+
+  // Privacy toggle row
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+    <span style="font-size:.75rem;color:var(--muted);">Show on bio</span>
+    <button class="privacy-pill ${isPublic ? 'public' : ''}" id="trophy-privacy-btn">${isPublic ? 'Public' : 'Private'}</button>
+  </div>`;
+
+  section.innerHTML = html;
+
+  document.getElementById('trophy-privacy-btn').addEventListener('click', async () => {
+    const privacy = Object.assign({}, userStats.privacy || {});
+    privacy.trophyCase = !privacy.trophyCase;
+    userStats.privacy = privacy;
+    await db.ref(`users/${currentUid}/privacy`).set(privacy);
+    renderTrophyCase(); // re-render to update pill state
+  });
+}
+
 async function togglePrivacy(key, pill) {
   const privacy = Object.assign({}, userStats.privacy || {});
   privacy[key] = !privacy[key];
@@ -1209,6 +1450,7 @@ async function showBio(uid, name, todayCount) {
   const snap = await db.ref(`users/${uid}`).get();
   const data = snap.val() || {};
   renderBio(data);
+  renderBioTrophies(data);
 }
 
 function renderBio(data) {
@@ -1280,6 +1522,24 @@ function renderBio(data) {
   });
 }
 
+function renderBioTrophies(data) {
+  const privacy = data.privacy || {};
+  if (!privacy.trophyCase) return;
+
+  const earned = data.achievements || {};
+  const earnedList = ACHIEVEMENTS.filter(a => earned[a.id]);
+  if (!earnedList.length) return;
+
+  const rows = document.getElementById('bio-rows');
+  const div = document.createElement('div');
+  div.innerHTML = `<div class="trophy-divider"></div>
+    <div class="trophy-title" style="margin-bottom:10px;">&#127942; Trophy Case</div>
+    <div class="trophy-grid">${earnedList.map(a =>
+      `<span class="trophy-badge${a.id === 'completionist' ? ' gold' : ''}" title="${escapeHtml(a.desc)}">${a.icon} ${escapeHtml(a.name)}</span>`
+    ).join('')}</div>`;
+  rows.appendChild(div);
+}
+
 function hideBio() {
   document.getElementById('bio-card').style.display = 'none';
   document.getElementById('pee-card').style.display = '';
@@ -1296,7 +1556,11 @@ function switchMainTab(tab) {
   document.getElementById('pee-card').style.display    = isToday ? '' : 'none';
   document.getElementById('lb-card').style.display     = isToday ? '' : 'none';
   document.getElementById('diary-card').style.display  = isToday ? 'none' : '';
-  if (!isToday) renderDiary();
+  if (!isToday) {
+    renderDiary();
+    renderTrophyCase();
+    queuePendingAchievements();
+  }
 }
 
 // ── Subscribe to today's leaderboard ─────────────────────────
@@ -1520,6 +1784,11 @@ document.getElementById('pee-btn').addEventListener('click', logPee);
 document.getElementById('save-name-btn').addEventListener('click', saveName);
 document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveName();
+});
+
+document.getElementById('ach-close').addEventListener('click', () => {
+  document.getElementById('achievement-popup').classList.remove('visible');
+  showNextAchievementPopup();
 });
 
 document.getElementById('patch-toggle').addEventListener('click', () => {
