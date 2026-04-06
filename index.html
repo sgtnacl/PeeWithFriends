@@ -285,6 +285,52 @@
       color: var(--yellow);
     }
 
+    /* ── Bio card ────────────────────────────────────────────── */
+    #bio-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: .85rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0 0 16px;
+      transition: color .15s;
+    }
+    #bio-back:hover { color: var(--text); }
+    #bio-header {
+      text-align: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    #bio-name {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--text);
+    }
+    #bio-today {
+      font-size: .85rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    #bio-today span { color: var(--yellow); font-weight: 700; }
+    .bio-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: .9rem;
+      padding: 20px 0 8px;
+    }
+
+    /* ── Clickable leaderboard rows ──────────────────────────── */
+    #leaderboard-list li.clickable {
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #leaderboard-list li.clickable:hover { background: var(--panel); }
+
     /* ── Anon upgrade banner ─────────────────────────────────── */
     #anon-banner {
       width: 100%;
@@ -638,6 +684,16 @@
     <div id="diary-rows"></div>
   </div>
 
+  <!-- User bio -->
+  <div class="card" id="bio-card" style="display:none;">
+    <button id="bio-back">&#8592; Back</button>
+    <div id="bio-header">
+      <div id="bio-name"></div>
+      <div id="bio-today"></div>
+    </div>
+    <div id="bio-rows"></div>
+  </div>
+
 </main>
 
 <!-- Firebase SDKs (compat) -->
@@ -801,7 +857,7 @@ function renderLeaderboard(snapshot) {
     const rankIcon = i < 3 ? medals[i] : `${i+1}`;
     const rankCls  = i < 3 ? rankClass[i] : 'rank-n';
     return `
-      <li class="${isMe ? 'is-me' : ''}">
+      <li class="${isMe ? 'is-me' : ''} clickable" data-uid="${escapeHtml(e.uid)}" data-name="${escapeHtml(e.name)}" data-count="${e.count}">
         <span class="rank ${rankCls}">${rankIcon}</span>
         <span class="lb-name">${escapeHtml(e.name)}</span>
         ${isMe ? '<span class="lb-you">YOU</span>' : ''}
@@ -982,6 +1038,101 @@ async function togglePrivacy(key, pill) {
   pill.className = 'privacy-pill' + (privacy[key] ? ' public' : '');
   pill.textContent = privacy[key] ? 'Public' : 'Private';
   await db.ref(`users/${currentUid}/privacy`).set(privacy);
+}
+
+// ── User bio ───────────────────────────────────────────────────
+async function showBio(uid, name, todayCount) {
+  document.getElementById('pee-card').style.display  = 'none';
+  document.getElementById('lb-card').style.display   = 'none';
+  document.getElementById('diary-card').style.display= 'none';
+  document.getElementById('bio-card').style.display  = '';
+
+  document.getElementById('bio-name').textContent = name;
+  document.getElementById('bio-today').innerHTML =
+    `<span>${todayCount}</span> pee${todayCount !== 1 ? 's' : ''} today`;
+  document.getElementById('bio-rows').innerHTML =
+    '<div class="bio-empty">Loading...</div>';
+
+  const snap = await db.ref(`users/${uid}`).get();
+  const data = snap.val() || {};
+  renderBio(data);
+}
+
+function renderBio(data) {
+  const privacy = data.privacy || {};
+  const rows = document.getElementById('bio-rows');
+
+  // Compute display values same way diary does
+  const lifetime   = data.lifetime || 0;
+  const activeDays = data.activeDays || 0;
+  const pc         = data.placementCount || 0;
+
+  const vals = {
+    lifetime:        lifetime || '—',
+    avgPerDay:       activeDays > 0 ? (lifetime / activeDays).toFixed(1) : '—',
+    streakCurrent:   data.streakCurrent ? `${data.streakCurrent} day${data.streakCurrent !== 1 ? 's' : ''}` : '—',
+    streakLongest:   data.streakLongest ? `${data.streakLongest} day${data.streakLongest !== 1 ? 's' : ''}` : '—',
+    leaderboardWins: data.leaderboardWins || '—',
+    avgPlacement:    pc > 0 ? '#' + (data.placementSum / pc).toFixed(1) : '—',
+    avgColor:        (() => {
+      let top = null, topN = 0;
+      Object.entries(data.colorHistory || {}).forEach(([id, n]) => { if (n > topN) { topN = n; top = id; } });
+      return top ? PEE_COLORS.find(c => c.id === top) : null;
+    })(),
+  };
+
+  const publicFields = DIARY_FIELDS.filter(f => privacy[f.key]);
+
+  if (!publicFields.length) {
+    rows.innerHTML = '<div class="bio-empty">This user hasn\'t made any stats public yet.</div>';
+    return;
+  }
+
+  rows.innerHTML = '';
+  publicFields.forEach(({ key, icon, label }) => {
+    const val = vals[key];
+    const row = document.createElement('div');
+    row.className = 'diary-row';
+
+    const statDiv = document.createElement('div');
+    statDiv.className = 'diary-stat';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'diary-icon';
+    iconSpan.textContent = icon;
+
+    const textDiv  = document.createElement('div');
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'diary-label';
+    labelDiv.textContent = label;
+
+    const valDiv = document.createElement('div');
+    valDiv.className = 'diary-value' + (key !== 'avgColor' ? ' accent' : '');
+
+    if (key === 'avgColor' && val) {
+      valDiv.innerHTML = `<span class="color-chip">
+        <span class="color-chip-dot" style="background:${val.hex}"></span>
+        ${escapeHtml(val.label)}
+      </span>`;
+    } else {
+      valDiv.textContent = val || '—';
+    }
+
+    textDiv.appendChild(labelDiv);
+    textDiv.appendChild(valDiv);
+    statDiv.appendChild(iconSpan);
+    statDiv.appendChild(textDiv);
+    row.appendChild(statDiv);
+    rows.appendChild(row);
+  });
+}
+
+function hideBio() {
+  document.getElementById('bio-card').style.display = 'none';
+  document.getElementById('pee-card').style.display = '';
+  document.getElementById('lb-card').style.display  = '';
+  document.getElementById('nav-today').classList.add('active');
+  document.getElementById('nav-diary').classList.remove('active');
 }
 
 // ── Nav tabs ───────────────────────────────────────────────────
@@ -1215,6 +1366,12 @@ document.getElementById('name-input').addEventListener('keydown', e => {
 
 document.getElementById('nav-today').addEventListener('click', () => switchMainTab('today'));
 document.getElementById('nav-diary').addEventListener('click',  () => switchMainTab('diary'));
+document.getElementById('bio-back').addEventListener('click', hideBio);
+document.getElementById('leaderboard-list').addEventListener('click', e => {
+  const li = e.target.closest('li[data-uid]');
+  if (!li) return;
+  showBio(li.dataset.uid, li.dataset.name, parseInt(li.dataset.count, 10));
+});
 document.getElementById('change-name-btn').addEventListener('click', showSetup);
 document.getElementById('signout-btn').addEventListener('click', handleSignOut);
 document.getElementById('auth-submit-btn').addEventListener('click', handleAuthSubmit);
