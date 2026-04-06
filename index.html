@@ -724,7 +724,7 @@
       </button>
 
       <div id="my-count">0</div>
-      <div id="my-count-label">pees today</div>
+      <div id="my-count-label">pees this week</div>
     </div>
 
     <div id="color-picker">
@@ -743,9 +743,9 @@
 
   <!-- Leaderboard -->
   <div class="card" id="lb-card" style="display:none;">
-    <div class="card-title">Today's Leaderboard</div>
+    <div class="card-title">This Week's Leaderboard</div>
     <ul id="leaderboard-list">
-      <li class="lb-empty">No pees logged yet today.</li>
+      <li class="lb-empty">No pees logged yet this week.</li>
     </ul>
   </div>
 
@@ -851,6 +851,25 @@ function getYesterdayKey() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function weekKey() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday of current week
+  const mon = new Date(d);
+  mon.setDate(diff);
+  return `week-${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
+}
+
+function getLastWeekKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const mon = new Date(d);
+  mon.setDate(diff);
+  return `week-${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
+}
+
 function formatDate(d) {
   return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 }
@@ -953,7 +972,7 @@ function renderLeaderboard(snapshot) {
   const data = snapshot.val();
 
   if (!data) {
-    list.innerHTML = '<li class="lb-empty">No pees logged yet today. Be first!</li>';
+    list.innerHTML = '<li class="lb-empty">No pees logged yet this week. Be first!</li>';
     return;
   }
 
@@ -1025,12 +1044,12 @@ function checkStreakOnLogin(data) {
   }
 }
 
-async function checkYesterdayLeaderboard(data) {
-  const yesterday = getYesterdayKey();
-  if (data.lastWinCheck === yesterday) return;
+async function checkLastWeekLeaderboard(data) {
+  const lastWeek = getLastWeekKey();
+  if (data.lastWinCheck === lastWeek) return;
 
-  const snap = await db.ref(`leaderboard/${yesterday}`).get();
-  const updates = { lastWinCheck: yesterday };
+  const snap = await db.ref(`leaderboard/${lastWeek}`).get();
+  const updates = { lastWinCheck: lastWeek };
 
   if (snap.exists()) {
     const entries = Object.entries(snap.val())
@@ -1161,7 +1180,7 @@ async function showBio(uid, name, todayCount) {
 
   document.getElementById('bio-name').textContent = name;
   document.getElementById('bio-today').innerHTML =
-    `<span>${todayCount}</span> pee${todayCount !== 1 ? 's' : ''} today`;
+    `<span>${todayCount}</span> pee${todayCount !== 1 ? 's' : ''} this week`;
   document.getElementById('bio-rows').innerHTML =
     '<div class="bio-empty">Loading...</div>';
 
@@ -1262,11 +1281,11 @@ function switchMainTab(tab) {
 function subscribeLeaderboard() {
   if (leaderboardSubscribed) return;
   leaderboardSubscribed = true;
-  db.ref(`leaderboard/${todayKey()}`).on('value', renderLeaderboard);
+  db.ref(`leaderboard/${weekKey()}`).on('value', renderLeaderboard);
 }
 
 function unsubscribeLeaderboard() {
-  db.ref(`leaderboard/${todayKey()}`).off('value', renderLeaderboard);
+  db.ref(`leaderboard/${weekKey()}`).off('value', renderLeaderboard);
   leaderboardSubscribed = false;
 }
 
@@ -1293,8 +1312,9 @@ async function logPee() {
   btn.disabled = true;
 
   try {
-    const today   = todayKey();
-    const userRef = db.ref(`leaderboard/${today}/${currentUid}`);
+    const today   = todayKey(); // still needed for updateUserStats streak logic
+    const weekK   = weekKey();
+    const userRef = db.ref(`leaderboard/${weekK}/${currentUid}`);
 
     // Read current server value to prevent race conditions
     const snap = await userRef.get();
@@ -1442,10 +1462,10 @@ async function saveName() {
 
   if (currentUid) {
     await db.ref(`users/${currentUid}/name`).set(displayName);
-    const today = todayKey();
-    const snap = await db.ref(`leaderboard/${today}/${currentUid}`).get();
+    const weekK = weekKey();
+    const snap = await db.ref(`leaderboard/${weekK}/${currentUid}`).get();
     if (snap.exists()) {
-      await db.ref(`leaderboard/${today}/${currentUid}/name`).set(displayName);
+      await db.ref(`leaderboard/${weekK}/${currentUid}/name`).set(displayName);
     }
   }
 
@@ -1538,7 +1558,7 @@ auth.onAuthStateChanged(async user => {
   }
 
   checkStreakOnLogin(userStats);
-  checkYesterdayLeaderboard(userStats);
+  checkLastWeekLeaderboard(userStats);
 
   subscribeLeaderboard();
   startCooldownUI(getRemainingCooldown());
