@@ -194,6 +194,35 @@
     }
     #auth-hint a { color: var(--yellow); text-decoration: none; }
 
+    /* ── Anon upgrade banner ─────────────────────────────────── */
+    #anon-banner {
+      width: 100%;
+      background: linear-gradient(135deg, #3a1a00, #5a2800);
+      border-bottom: 2px solid var(--yellow-dark);
+      padding: 12px 20px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    #anon-banner.visible { display: flex; }
+    #anon-banner p { font-size: .85rem; color: #ffd580; line-height: 1.4; margin: 0; }
+    #anon-banner strong { color: #fff; }
+    #anon-banner-btn {
+      background: var(--yellow);
+      color: #0d1b2a;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: .8rem;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #anon-banner-btn:hover { background: var(--yellow-dark); }
+
     /* ── Pee button ──────────────────────────────────────────── */
     #pee-card { text-align: center; }
     #pee-btn {
@@ -424,6 +453,12 @@
 <div id="loading">
   <div class="spinner"></div>
   <p>Connecting...</p>
+</div>
+
+<!-- Anonymous upgrade banner -->
+<div id="anon-banner">
+  <p><strong>Guest account detected.</strong> Sign out and register to save your data across devices.</p>
+  <button id="anon-banner-btn">Sign Out &amp; Register</button>
 </div>
 
 <!-- Header -->
@@ -819,6 +854,7 @@ async function handleSignOut() {
   localStorage.removeItem('pwf_lastPee');
   resetColorPicker();
 
+  document.getElementById('anon-banner').classList.remove('visible');
   document.getElementById('pee-card').style.display     = 'none';
   document.getElementById('lb-card').style.display      = 'none';
   document.getElementById('setup-screen').style.display = 'none';
@@ -888,6 +924,10 @@ document.getElementById('auth-switch-link').addEventListener('click', e => { e.p
 document.getElementById('auth-username').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('auth-password').focus(); });
 document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleAuthSubmit(); });
 document.getElementById('auth-displayname').addEventListener('keydown', e => { if (e.key === 'Enter') handleAuthSubmit(); });
+document.getElementById('anon-banner-btn').addEventListener('click', async () => {
+  await handleSignOut();
+  switchAuthTab('register');
+});
 
 auth.onAuthStateChanged(async user => {
   document.getElementById('loading').style.display = 'none';
@@ -905,6 +945,11 @@ auth.onAuthStateChanged(async user => {
 
   currentUid = user.uid;
   document.getElementById('auth-screen').style.display = 'none';
+
+  // Show upgrade banner for legacy anonymous users
+  if (user.isAnonymous) {
+    document.getElementById('anon-banner').classList.add('visible');
+  }
 
   // Load display name from RTDB (source of truth across devices)
   const snap = await db.ref(`users/${currentUid}/name`).get();
