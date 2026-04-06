@@ -194,6 +194,97 @@
     }
     #auth-hint a { color: var(--yellow); text-decoration: none; }
 
+    /* ── Main nav tabs ───────────────────────────────────────── */
+    #main-nav {
+      width: 100%;
+      max-width: 560px;
+      display: none;
+      padding: 12px 16px 0;
+      gap: 6px;
+    }
+    #main-nav.visible { display: flex; }
+    .nav-tab {
+      flex: 1;
+      padding: 9px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: .85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .nav-tab.active {
+      background: var(--yellow);
+      color: #0d1b2a;
+      border-color: var(--yellow);
+    }
+
+    /* ── Diary card ──────────────────────────────────────────── */
+    .diary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+    .diary-row:last-child { border-bottom: none; }
+    .diary-stat {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .diary-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .diary-label {
+      font-size: .75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .diary-value {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .diary-value.accent { color: var(--yellow); }
+    .color-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+    .color-chip-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .privacy-pill {
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .05em;
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .privacy-pill.public {
+      background: rgba(245,200,0,.12);
+      border-color: var(--yellow);
+      color: var(--yellow);
+    }
+
     /* ── Anon upgrade banner ─────────────────────────────────── */
     #anon-banner {
       width: 100%;
@@ -467,6 +558,12 @@
   <div id="date-display"></div>
 </header>
 
+<!-- Main nav (Today / Diary) -->
+<div id="main-nav">
+  <button class="nav-tab active" id="nav-today">Today</button>
+  <button class="nav-tab"        id="nav-diary">My Diary</button>
+</div>
+
 <main id="app" style="display:none;">
 
   <!-- Auth screen — login / register -->
@@ -535,6 +632,12 @@
     </ul>
   </div>
 
+  <!-- Diary -->
+  <div class="card" id="diary-card" style="display:none;">
+    <div class="card-title">My Diary</div>
+    <div id="diary-rows"></div>
+  </div>
+
 </main>
 
 <!-- Firebase SDKs (compat) -->
@@ -566,10 +669,17 @@ let displayName = null;
 let cooldownInterval = null;
 let selectedColor = null;
 let leaderboardSubscribed = false;
+let userStats = {};
 
 // ── Helpers ───────────────────────────────────────────────────
 function todayKey() {
   const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getYesterdayKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
@@ -708,6 +818,183 @@ function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── User stats ────────────────────────────────────────────────
+async function updateUserStats(colorId) {
+  const today = todayKey();
+  const yesterday = getYesterdayKey();
+  const ref = db.ref(`users/${currentUid}`);
+  const snap = await ref.get();
+  const data = snap.val() || {};
+
+  const updates = {};
+  updates.lifetime = (data.lifetime || 0) + 1;
+  if (!data.joinedAt) updates.joinedAt = Date.now();
+
+  const colorHistory = Object.assign({}, data.colorHistory || {});
+  colorHistory[colorId] = (colorHistory[colorId] || 0) + 1;
+  updates.colorHistory = colorHistory;
+
+  const lastPeeDate = data.lastPeeDate || null;
+  if (lastPeeDate !== today) {
+    updates.activeDays  = (data.activeDays || 0) + 1;
+    updates.lastPeeDate = today;
+    const cur = lastPeeDate === yesterday ? (data.streakCurrent || 0) + 1 : 1;
+    updates.streakCurrent = cur;
+    updates.streakLongest = Math.max(data.streakLongest || 0, cur);
+  }
+
+  await ref.update(updates);
+  userStats = Object.assign({}, data, updates);
+}
+
+function checkStreakOnLogin(data) {
+  if (!data.lastPeeDate) return;
+  const yesterday = getYesterdayKey();
+  const today = todayKey();
+  if (data.lastPeeDate !== today && data.lastPeeDate !== yesterday && (data.streakCurrent || 0) > 0) {
+    db.ref(`users/${currentUid}/streakCurrent`).set(0);
+    userStats.streakCurrent = 0;
+  }
+}
+
+async function checkYesterdayLeaderboard(data) {
+  const yesterday = getYesterdayKey();
+  if (data.lastWinCheck === yesterday) return;
+
+  const snap = await db.ref(`leaderboard/${yesterday}`).get();
+  const updates = { lastWinCheck: yesterday };
+
+  if (snap.exists()) {
+    const entries = Object.entries(snap.val())
+      .map(([uid, v]) => ({ uid, count: v.count || 0 }))
+      .sort((a, b) => b.count - a.count);
+    const myRank = entries.findIndex(e => e.uid === currentUid) + 1;
+    if (myRank > 0) {
+      updates.placementSum   = (data.placementSum   || 0) + myRank;
+      updates.placementCount = (data.placementCount || 0) + 1;
+      if (myRank === 1) updates.leaderboardWins = (data.leaderboardWins || 0) + 1;
+    }
+  }
+
+  await db.ref(`users/${currentUid}`).update(updates);
+  Object.assign(userStats, updates);
+}
+
+// ── Diary ──────────────────────────────────────────────────────
+const DIARY_FIELDS = [
+  { key: 'lifetime',        icon: '💧', label: 'Lifetime Pees'          },
+  { key: 'avgPerDay',       icon: '📅', label: 'Avg Pees / Active Day'  },
+  { key: 'streakCurrent',   icon: '🔥', label: 'Current Streak'         },
+  { key: 'streakLongest',   icon: '🏅', label: 'Longest Streak'         },
+  { key: 'leaderboardWins', icon: '🏆', label: 'Leaderboard Wins'       },
+  { key: 'avgPlacement',    icon: '📊', label: 'Avg Leaderboard Place'  },
+  { key: 'avgColor',        icon: '🎨', label: 'Most Common Color'      },
+];
+
+function computeStats() {
+  const s = userStats;
+  const lifetime   = s.lifetime || 0;
+  const activeDays = s.activeDays || 0;
+  const avgPerDay  = activeDays > 0 ? (lifetime / activeDays).toFixed(1) : '—';
+  const streakCur  = s.streakCurrent || 0;
+  const streakLong = s.streakLongest || 0;
+  const wins       = s.leaderboardWins || 0;
+  const pc         = s.placementCount || 0;
+  const avgPlace   = pc > 0 ? '#' + (s.placementSum / pc).toFixed(1) : '—';
+
+  let topColor = null, topCount = 0;
+  Object.entries(s.colorHistory || {}).forEach(([id, n]) => {
+    if (n > topCount) { topCount = n; topColor = id; }
+  });
+  const colorData = topColor ? PEE_COLORS.find(c => c.id === topColor) : null;
+
+  return {
+    lifetime:        lifetime || '—',
+    avgPerDay,
+    streakCurrent:   streakCur  ? `${streakCur} day${streakCur !== 1 ? 's' : ''}` : '—',
+    streakLongest:   streakLong ? `${streakLong} day${streakLong !== 1 ? 's' : ''}` : '—',
+    leaderboardWins: wins || '—',
+    avgPlacement:    avgPlace,
+    avgColor:        colorData,
+  };
+}
+
+function renderDiary() {
+  const stats   = computeStats();
+  const privacy = userStats.privacy || {};
+  const rows    = document.getElementById('diary-rows');
+
+  rows.innerHTML = '';
+  DIARY_FIELDS.forEach(({ key, icon, label }) => {
+    const val     = stats[key];
+    const isPublic = !!privacy[key];
+
+    const row = document.createElement('div');
+    row.className = 'diary-row';
+
+    // Left: icon + label + value
+    const statDiv = document.createElement('div');
+    statDiv.className = 'diary-stat';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'diary-icon';
+    iconSpan.textContent = icon;
+
+    const textDiv = document.createElement('div');
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'diary-label';
+    labelDiv.textContent = label;
+
+    const valDiv = document.createElement('div');
+    valDiv.className = 'diary-value' + (key !== 'avgColor' ? ' accent' : '');
+
+    if (key === 'avgColor' && val) {
+      valDiv.innerHTML = `<span class="color-chip">
+        <span class="color-chip-dot" style="background:${val.hex}"></span>
+        ${escapeHtml(val.label)}
+      </span>`;
+    } else {
+      valDiv.textContent = val || '—';
+    }
+
+    textDiv.appendChild(labelDiv);
+    textDiv.appendChild(valDiv);
+    statDiv.appendChild(iconSpan);
+    statDiv.appendChild(textDiv);
+
+    // Right: privacy toggle
+    const pill = document.createElement('button');
+    pill.className = 'privacy-pill' + (isPublic ? ' public' : '');
+    pill.textContent = isPublic ? 'Public' : 'Private';
+    pill.dataset.statKey = key;
+    pill.addEventListener('click', () => togglePrivacy(key, pill));
+
+    row.appendChild(statDiv);
+    row.appendChild(pill);
+    rows.appendChild(row);
+  });
+}
+
+async function togglePrivacy(key, pill) {
+  const privacy = Object.assign({}, userStats.privacy || {});
+  privacy[key] = !privacy[key];
+  userStats.privacy = privacy;
+  pill.className = 'privacy-pill' + (privacy[key] ? ' public' : '');
+  pill.textContent = privacy[key] ? 'Public' : 'Private';
+  await db.ref(`users/${currentUid}/privacy`).set(privacy);
+}
+
+// ── Nav tabs ───────────────────────────────────────────────────
+function switchMainTab(tab) {
+  const isToday = tab === 'today';
+  document.getElementById('nav-today').classList.toggle('active', isToday);
+  document.getElementById('nav-diary').classList.toggle('active', !isToday);
+  document.getElementById('pee-card').style.display    = isToday ? '' : 'none';
+  document.getElementById('lb-card').style.display     = isToday ? '' : 'none';
+  document.getElementById('diary-card').style.display  = isToday ? 'none' : '';
+  if (!isToday) renderDiary();
+}
+
 // ── Subscribe to today's leaderboard ─────────────────────────
 function subscribeLeaderboard() {
   if (leaderboardSubscribed) return;
@@ -776,6 +1063,7 @@ async function logPee() {
     startCooldownUI(COOLDOWN_MS);
     showFlash(`Logged! ${selectedColor.hint}`);
     resetColorPicker();
+    updateUserStats(selectedColor.id);
 
   } catch (err) {
     console.error(err);
@@ -854,9 +1142,12 @@ async function handleSignOut() {
   localStorage.removeItem('pwf_lastPee');
   resetColorPicker();
 
+  userStats = {};
   document.getElementById('anon-banner').classList.remove('visible');
+  document.getElementById('main-nav').classList.remove('visible');
   document.getElementById('pee-card').style.display     = 'none';
   document.getElementById('lb-card').style.display      = 'none';
+  document.getElementById('diary-card').style.display   = 'none';
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display  = '';
   document.getElementById('auth-error').style.display   = 'none';
@@ -873,6 +1164,7 @@ function showSetup() {
   document.getElementById('setup-screen').style.display = '';
   document.getElementById('pee-card').style.display     = 'none';
   document.getElementById('lb-card').style.display      = 'none';
+  document.getElementById('diary-card').style.display   = 'none';
   document.getElementById('name-input').value = displayName || '';
   document.getElementById('name-input').focus();
 }
@@ -899,9 +1191,14 @@ async function saveName() {
 function showApp() {
   document.getElementById('auth-screen').style.display  = 'none';
   document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('diary-card').style.display   = 'none';
   document.getElementById('pee-card').style.display     = '';
   document.getElementById('lb-card').style.display      = '';
   document.getElementById('display-name-label').textContent = displayName;
+  document.getElementById('main-nav').classList.add('visible');
+  // Reset to today tab whenever app is shown
+  document.getElementById('nav-today').classList.add('active');
+  document.getElementById('nav-diary').classList.remove('active');
 }
 
 // ── Boot ──────────────────────────────────────────────────────
@@ -915,6 +1212,8 @@ document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveName();
 });
 
+document.getElementById('nav-today').addEventListener('click', () => switchMainTab('today'));
+document.getElementById('nav-diary').addEventListener('click',  () => switchMainTab('diary'));
 document.getElementById('change-name-btn').addEventListener('click', showSetup);
 document.getElementById('signout-btn').addEventListener('click', handleSignOut);
 document.getElementById('auth-submit-btn').addEventListener('click', handleAuthSubmit);
@@ -951,14 +1250,19 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('anon-banner').classList.add('visible');
   }
 
-  // Load display name from RTDB (source of truth across devices)
-  const snap = await db.ref(`users/${currentUid}/name`).get();
-  if (snap.exists()) {
-    displayName = snap.val();
+  // Load full user profile from RTDB
+  const snap = await db.ref(`users/${currentUid}`).get();
+  userStats = snap.val() || {};
+
+  if (userStats.name) {
+    displayName = userStats.name;
     localStorage.setItem('pwf_name', displayName);
   } else {
     displayName = localStorage.getItem('pwf_name') || null;
   }
+
+  checkStreakOnLogin(userStats);
+  checkYesterdayLeaderboard(userStats);
 
   subscribeLeaderboard();
   startCooldownUI(getRemainingCooldown());
