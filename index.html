@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Piss With Friends</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="PissWF" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#f5c800" />
   <style>
     :root {
       --yellow:     #f5c800;
@@ -779,6 +785,22 @@
   <div id="patch-body">
 
     <div class="patch-feature">
+      <div class="patch-feature-title">&#128241; Install as an App</div>
+      <p>Piss With Friends can be installed directly on your home screen — no app store required.</p>
+      <p style="margin-top:10px;color:var(--text);font-weight:700;">iPhone &amp; iPad (Safari only)</p>
+      <p>1. Open this page in <strong style="color:var(--text)">Safari</strong><br>
+         2. Tap the <strong style="color:var(--text)">Share button</strong> (the box with an arrow at the bottom of the screen)<br>
+         3. Scroll down and tap <strong style="color:var(--text)">Add to Home Screen</strong><br>
+         4. Tap <strong style="color:var(--text)">Add</strong> — done</p>
+      <p style="margin-top:10px;color:var(--text);font-weight:700;">Android (Chrome)</p>
+      <p>1. Open this page in <strong style="color:var(--text)">Chrome</strong><br>
+         2. Tap the <strong style="color:var(--text)">three-dot menu</strong> (&#8942;) in the top right<br>
+         3. Tap <strong style="color:var(--text)">Add to Home screen</strong><br>
+         4. Tap <strong style="color:var(--text)">Add</strong> — done</p>
+      <p style="margin-top:8px;">The app opens full-screen with no browser chrome, just like a native app.</p>
+    </div>
+
+    <div class="patch-feature">
       <div class="patch-feature-title">&#128274; New Account System</div>
       <p>You can now create an account with a username and password. Your data is tied to your account — not your device — so you can log in from your phone, a friend's phone, or anywhere else and pick up right where you left off.</p>
     </div>
@@ -1488,6 +1510,10 @@ function showApp() {
 // ── Boot ──────────────────────────────────────────────────────
 document.getElementById('date-display').textContent = formatDate(new Date());
 initColorPicker();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
 
 document.getElementById('pee-btn').addEventListener('click', logPee);
 

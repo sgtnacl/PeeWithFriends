@@ -1,0 +1,19 @@
+{
+  "name": "Piss With Friends",
+  "short_name": "PissWF",
+  "description": "Competitive weekly pee tracker with leaderboards, streaks, and hydration tracking.",
+  "start_url": "/PeeWithFriends/",
+  "scope": "/PeeWithFriends/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1b2a",
+  "theme_color": "#f5c800",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
