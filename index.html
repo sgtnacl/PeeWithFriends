@@ -324,6 +324,77 @@
       padding: 20px 0 8px;
     }
 
+    /* ── Patch notes ─────────────────────────────────────────── */
+    #patch-notes {
+      width: 100%;
+      max-width: 560px;
+      padding: 0 16px 48px;
+    }
+    #patch-toggle {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color .15s;
+    }
+    #patch-toggle:hover { border-color: var(--muted); }
+    #patch-toggle-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    #patch-toggle-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 2px;
+    }
+    #patch-chevron {
+      font-size: 1.1rem;
+      color: var(--muted);
+      transition: transform .2s;
+      flex-shrink: 0;
+    }
+    #patch-chevron.open { transform: rotate(180deg); }
+    #patch-body {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 14px 14px;
+      padding: 0 20px 20px;
+    }
+    #patch-body.open { display: block; }
+    #patch-toggle.open { border-radius: 14px 14px 0 0; border-bottom-color: transparent; }
+    .patch-feature {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .patch-feature:last-child { border-bottom: none; padding-bottom: 0; }
+    .patch-feature-title {
+      font-size: .9rem;
+      font-weight: 800;
+      color: var(--yellow);
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .patch-feature p {
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .patch-feature p + p { margin-top: 5px; }
+
     /* ── Clickable leaderboard rows ──────────────────────────── */
     #leaderboard-list li.clickable {
       cursor: pointer;
@@ -695,6 +766,47 @@
   </div>
 
 </main>
+
+<!-- Patch notes / features added -->
+<div id="patch-notes">
+  <button id="patch-toggle">
+    <div>
+      <div id="patch-toggle-label">Features Added</div>
+      <div id="patch-toggle-title">What's New in Piss With Friends</div>
+    </div>
+    <span id="patch-chevron">&#9660;</span>
+  </button>
+  <div id="patch-body">
+
+    <div class="patch-feature">
+      <div class="patch-feature-title">&#128274; New Account System</div>
+      <p>You can now create an account with a username and password. Your data is tied to your account — not your device — so you can log in from your phone, a friend's phone, or anywhere else and pick up right where you left off.</p>
+    </div>
+
+    <div class="patch-feature">
+      <div class="patch-feature-title">&#128214; Personal Diary</div>
+      <p>Tap <strong style="color:var(--text)">My Diary</strong> in the nav to see your private stats dashboard. It tracks:</p>
+      <p>&#8226; <strong style="color:var(--text)">Lifetime Pees</strong> — your all-time total, forever<br>
+         &#8226; <strong style="color:var(--text)">Avg Pees / Active Day</strong> — how many you average on days you actually pee<br>
+         &#8226; <strong style="color:var(--text)">Current &amp; Longest Streak</strong> — consecutive days with at least one logged pee<br>
+         &#8226; <strong style="color:var(--text)">Leaderboard Wins</strong> — days you finished #1<br>
+         &#8226; <strong style="color:var(--text)">Avg Leaderboard Placement</strong> — your average daily rank<br>
+         &#8226; <strong style="color:var(--text)">Most Common Color</strong> — your most frequently selected pee color</p>
+    </div>
+
+    <div class="patch-feature">
+      <div class="patch-feature-title">&#128100; Public User Bio</div>
+      <p>Each stat in your diary has a <strong style="color:var(--text)">Private / Public</strong> toggle. Stats you make public will appear on your user bio for anyone to see. Everything is private by default — you choose what to share.</p>
+      <p>Tap any player on the leaderboard to view their bio and see the stats they've made public.</p>
+    </div>
+
+    <div class="patch-feature">
+      <div class="patch-feature-title">&#127747; Pee Color Tracker</div>
+      <p>Before logging a pee, pick the color that matches what you see — from clear all the way to brown. Each color maps to a hydration status so you get instant feedback on how well you're drinking. Your most common color is tracked over time in your diary.</p>
+    </div>
+
+  </div>
+</div>
 
 <!-- Firebase SDKs (compat) -->
 <script src="firebase-config.js"></script>
@@ -1362,6 +1474,12 @@ document.getElementById('pee-btn').addEventListener('click', logPee);
 document.getElementById('save-name-btn').addEventListener('click', saveName);
 document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveName();
+});
+
+document.getElementById('patch-toggle').addEventListener('click', () => {
+  const open = document.getElementById('patch-body').classList.toggle('open');
+  document.getElementById('patch-chevron').classList.toggle('open', open);
+  document.getElementById('patch-toggle').classList.toggle('open', open);
 });
 
 document.getElementById('nav-today').addEventListener('click', () => switchMainTab('today'));
